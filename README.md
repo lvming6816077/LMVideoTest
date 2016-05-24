@@ -8,4 +8,4 @@ ios采集音视频数据并通过rtmp上传到nginx
 http://www.alloyteam.com/?p=10876
 
 如果对你有用，可以给个star👍
-部分工具类参考了https://github.com/runner365/LiveVideoCoreSDK
+
