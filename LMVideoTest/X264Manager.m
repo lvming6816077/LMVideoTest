@@ -29,16 +29,17 @@ static X264Manager* _instance = nil;
     self->p264Param = malloc(sizeof(x264_param_t));//video params use for encoding
     self->p264Pic  = malloc(sizeof(x264_picture_t));//raw image data for storing image data
     memset(self->p264Pic,0,sizeof(x264_picture_t));//clear memory
-    x264_param_default_preset(self->p264Param,"veryfast","zerolatency");//set encoder params
+    
+    x264_param_default_preset(self->p264Param, "fast", "zerolatency");//set encoder params
     
     
     self->p264Param->i_width   = width;  //set frame width
     self->p264Param->i_height  = height;  //set frame height
     
     /*video 设置*/
-    self->p264Param->i_threads = 0;/* encode multiple frames in parallel */
+    self->p264Param->i_threads = 1;/* encode multiple frames in parallel */
     self->p264Param->b_sliced_threads = 1;
-    self->p264Param->i_level_idc = 10;/*编码复杂度*/  /*未知*/
+    self->p264Param->i_level_idc = 30;/*编码复杂度*/  /*未知*/
     self->p264Param->analyse.intra = X264_ANALYSE_I4x4;/* 帧间分区*/ /*未知*/
     self->p264Param->analyse.inter = X264_ANALYSE_I4x4; /* 帧内分区 */ /*未知*/
     self->p264Param->analyse.i_direct_mv_pred = X264_DIRECT_PRED_SPATIAL;/*时间空间队运动预测 */
@@ -58,6 +59,7 @@ static X264Manager* _instance = nil;
     self->p264Param->analyse.i_me_method = X264_ME_DIA;/* 运动估计算法 (X264_ME_*)*/
     self->p264Param->rc.i_lookahead = 0;
     self->p264Param->i_keyint_max = 30;/* 在此间隔设置IDR关键帧(每过多少帧设置一个IDR帧) */
+    self->p264Param->b_repeat_headers = 1; //关键帧前面是否放sps跟pps帧
     self->p264Param->i_scenecut_threshold = 40;/*如何积极地插入额外的I帧 */
     self->p264Param->rc.i_qp_min = 10;//关键帧最小间隔
     self->p264Param->rc.i_qp_max = 50; //关键帧最大间隔
@@ -69,8 +71,9 @@ static X264Manager* _instance = nil;
     self->p264Param->b_annexb = 1;//如果设置了该项，则在每个NAL单元前加一个四字节的前缀符
     self->p264Param->b_cabac = 0;
     self->p264Param->rc.i_rc_method = X264_RC_ABR;//参数i_rc_method表示码率控制，CQP(恒定质量)，CRF(恒定码率)，ABR(平均码率)
-    self->p264Param->rc.i_bitrate = 512; /*设置平均码率 */
-    
+    int m_bitRate = 76000;
+    self->p264Param->rc.i_bitrate = m_bitRate / 1000; // 码率(比特率), x264使用的bitrate需要/1000。
+    p264Param->rc.i_vbv_max_bitrate=(int)((m_bitRate * 1.2) / 1000) ; // 平均码率模式下，最大瞬时码率，默认0(与-B设置相同)
     
     x264_param_apply_profile(self->p264Param,"baseline");
     if((self->p264Handle =x264_encoder_open(self->p264Param)) == NULL)
@@ -122,30 +125,61 @@ static X264Manager* _instance = nil;
         x264_picture_t pic_out;
         uint32_t sps_len = 0;
         uint32_t pps_len = 0;
-        uint8_t  *baseAddress0 = (uint8_t *)CVPixelBufferGetBaseAddressOfPlane(pixelBuffer, 0);
-        uint8_t  *baseAddress1 = (uint8_t *)CVPixelBufferGetBaseAddressOfPlane(pixelBuffer, 1);
+
         
-        memcpy(self->p264Pic->img.plane[0], baseAddress0,self->p264Param->i_width*self->p264Param->i_height);
-        uint8_t * pDst1 = self->p264Pic->img.plane[1];
-        uint8_t * pDst2 = self->p264Pic->img.plane[2];
+        UInt8 *bufferPtr = (UInt8 *)CVPixelBufferGetBaseAddressOfPlane(pixelBuffer,0);
+        UInt8 *bufferPtr1 = (UInt8 *)CVPixelBufferGetBaseAddressOfPlane(pixelBuffer,1);
         
-        for( int i = 0; i < self->p264Param->i_width*self->p264Param->i_height/4; i ++ )//UV数据解析，有颜色~~
+        size_t width = CVPixelBufferGetWidth(pixelBuffer);
+        size_t height = CVPixelBufferGetHeight(pixelBuffer);
+        
+        size_t bytesrow0 = CVPixelBufferGetBytesPerRowOfPlane(pixelBuffer,0);
+        size_t bytesrow1  = CVPixelBufferGetBytesPerRowOfPlane(pixelBuffer,1);
+        
+        UInt8 *yuv420_data = (UInt8 *)malloc(width * height *3/ 2);//buffer to store YUV with layout YYYYYYYYUUVV
+        
+        
+        /* convert NV12 data to YUV420*/
+        UInt8 *pY = bufferPtr ;
+        UInt8 *pUV = bufferPtr1;
+        UInt8 *pU = yuv420_data + width * height;
+        UInt8 *pV = pU + width * height / 4;
+        for(int i = 0; i < height; i++)
         {
-            *pDst1++ = *baseAddress1++;
-            *pDst2++ = *baseAddress1++;
+            memcpy(yuv420_data + i * width, pY + i * bytesrow0, width);
+        }
+        for(int j = 0;j < height/2; j++)
+        {
+            for(int i = 0; i < width/2; i++)
+            {
+                *(pU++) = pUV[i<<1];
+                *(pV++) = pUV[(i<<1) + 1];
+            }
+            pUV += bytesrow1;
         }
         
-        int i_frame_size = x264_encoder_encode(self->p264Handle, &self->p264Nal, &i264Nal,self->p264Pic ,&pic_out);
+        p264Pic->img.i_plane = 3;
+        p264Pic->img.plane[0] = yuv420_data; // yuv420_data <==> pInFrame
+        p264Pic->img.plane[1] = p264Pic->img.plane[0] + p264Param->i_width * p264Param->i_height;
+        p264Pic->img.plane[2] = p264Pic->img.plane[1] + (p264Param->i_width * p264Param->i_height / 4);
+        p264Pic->img.i_stride[0] = p264Param->i_width;
+        p264Pic->img.i_stride[1] = p264Param->i_width / 2;
+        p264Pic->img.i_stride[2] = p264Param->i_width / 2;
+        
+        int i_frame_size = x264_encoder_encode(p264Handle, &p264Nal, &i264Nal,p264Pic ,&pic_out);
         if(i_frame_size  < 0)//帧总数
         {
             fprintf(stderr, "x264_encoder_encode failed/n" );
             return;
         }
+        free(yuv420_data);
+        yuv420_data = NULL;
         
         if (i264Nal > 0)//解析出帧来了
         {
             for (int i = 0,last = 0; i < i264Nal; i++)
             {
+                //写文件
                 fwrite(self->p264Nal[i].p_payload, 1, i_frame_size - last, self->fp);
                 //fwrite(self->p264Nal[i].p_payload, 1, self->p264Nal[i].i_payload,self->fp);
                 if (self->p264Nal[i].i_type == NAL_SPS)
@@ -176,5 +210,4 @@ static X264Manager* _instance = nil;
 {
     fclose(self->fp);
 }
-
 @end

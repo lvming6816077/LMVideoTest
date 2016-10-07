@@ -21,7 +21,7 @@
 @implementation ViewController{
     AVCaptureConnection *_videoConnection;
     AVCaptureConnection *_audioConnection;
-    X264Manager *_manager264;
+
     RtmpManager *_rtmpManager;
     
     BOOL _runningFlag;
@@ -32,7 +32,7 @@
     
     // 推流
     _rtmpManager = [RtmpManager getInstance];
-    _rtmpManager.rtmpUrl = @"rtmp://10.66.69.48:1935/hls/mystream";
+    _rtmpManager.rtmpUrl = @"rtmp://192.168.0.105:1935/hls/mystream";
     [_rtmpManager startRtmpConnect];
     
     //音频
@@ -41,7 +41,8 @@
     
     //视频
     [[X264Manager getInstance] initForX264WithWidth:352 height:288];
-
+    
+    [[X264Manager getInstance] initForFilePath];
     [self setupCaptureSession];
     
     [self initUI];
@@ -54,7 +55,7 @@
     NSError *error = nil;
     self.session = [[AVCaptureSession alloc] init];
     
-    self.session.sessionPreset = AVCaptureSessionPresetMedium;
+    self.session.sessionPreset = AVCaptureSessionPreset352x288;
     AVCaptureDevice *device = [self cameraWithPosition:AVCaptureDevicePositionFront];
     AVCaptureDeviceInput *input = [AVCaptureDeviceInput deviceInputWithDevice:device error:&error];
     if (error) {
@@ -97,7 +98,7 @@
     // 设置视频预览界面
     self.preViewLayer = [AVCaptureVideoPreviewLayer layerWithSession:self.session];
     self.preViewLayer.videoGravity = AVLayerVideoGravityResizeAspectFill;
-    self.preViewLayer.frame = CGRectMake(0, 0, self.view.frame.size.width, 500);
+    self.preViewLayer.frame = CGRectMake(0, 0, self.view.frame.size.width, self.view.frame.size.height);
     [self.view.layer addSublayer:_preViewLayer];
     
     
@@ -145,7 +146,7 @@
     
     if (connection == _videoConnection) {
         
-        [_manager264 encoderToH264:sampleBuffer];
+        [[X264Manager getInstance] encoderToH264:sampleBuffer];
 
     }
     

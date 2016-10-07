@@ -556,7 +556,7 @@
 					"$(PROJECT_DIR)/LMVideoTest/aac",
 					"$(PROJECT_DIR)/LMVideoTest/librtmp/lib",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = tenny.VideoTest;
+				PRODUCT_BUNDLE_IDENTIFIER = tenny.VideoTestgg;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE = "";
 			};
@@ -578,7 +578,7 @@
 					"$(PROJECT_DIR)/LMVideoTest/aac",
 					"$(PROJECT_DIR)/LMVideoTest/librtmp/lib",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = tenny.VideoTest;
+				PRODUCT_BUNDLE_IDENTIFIER = tenny.VideoTestgg;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE = "";
 			};
@@ -603,6 +603,7 @@
 				4110BF341CF33894003AAC0F /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
 	};
