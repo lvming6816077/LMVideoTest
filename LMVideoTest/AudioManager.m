@@ -70,7 +70,7 @@ static void OnIsRunningCallback(void *inUserData, AudioQueueRef inAQ, AudioQueue
 {
     [self openEncoder];
     
-    [self initForFilePath];
+//    [self initForFilePath];
     
     AVAudioSession * audioSession = [AVAudioSession sharedInstance];
     [audioSession setCategory:AVAudioSessionCategoryPlayAndRecord error: nil];

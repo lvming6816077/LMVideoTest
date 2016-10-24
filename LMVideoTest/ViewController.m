@@ -32,7 +32,7 @@
     
     // 推流
     _rtmpManager = [RtmpManager getInstance];
-    _rtmpManager.rtmpUrl = @"rtmp://192.168.0.105:1935/hls/mystream";
+    _rtmpManager.rtmpUrl = @"rtmp://192.168.1.104:1935/hls/mystream";
     [_rtmpManager startRtmpConnect];
     
     //音频
@@ -40,9 +40,9 @@
     
     
     //视频
-    [[X264Manager getInstance] initForX264WithWidth:352 height:288];
+    [[X264Manager getInstance] initForX264WithWidth:480 height:640];
     
-    [[X264Manager getInstance] initForFilePath];
+
     [self setupCaptureSession];
     
     [self initUI];
@@ -55,7 +55,8 @@
     NSError *error = nil;
     self.session = [[AVCaptureSession alloc] init];
     
-    self.session.sessionPreset = AVCaptureSessionPreset352x288;
+    self.session.sessionPreset = AVCaptureSessionPreset640x480;
+    
     AVCaptureDevice *device = [self cameraWithPosition:AVCaptureDevicePositionFront];
     AVCaptureDeviceInput *input = [AVCaptureDeviceInput deviceInputWithDevice:device error:&error];
     if (error) {
@@ -92,6 +93,9 @@
     
     
     _videoConnection = [outPut connectionWithMediaType:AVMediaTypeVideo];
+    
+    _videoConnection.videoOrientation = AVCaptureVideoOrientationPortrait;
+    
     
 
     

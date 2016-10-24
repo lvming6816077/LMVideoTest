@@ -23,8 +23,8 @@
 
 - (void)initForX264WithWidth:(int)width height:(int)height;
 
-- (void)initForFilePath;
-//初始化编码后文件的保存路径
+
+
 
 - (void)encoderToH264:(CMSampleBufferRef)sampleBuffer;
 

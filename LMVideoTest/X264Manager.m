@@ -21,7 +21,11 @@ static X264Manager* _instance = nil;
     }
     return _instance;
 }
+// 重要参数：
 
+//  i_keyint_max 设置gop长度 单位：间隔帧数
+//  m_bitRate 设置码率 单位：bps
+//  i_fps_num 设置帧率 单位：fps
 
 - (void)initForX264WithWidth:(int)width height:(int)height
 {
@@ -58,20 +62,20 @@ static X264Manager* _instance = nil;
     self->p264Param->analyse.i_me_range = 16;/* 整像素运动估计搜索范围 (from predicted mv) */
     self->p264Param->analyse.i_me_method = X264_ME_DIA;/* 运动估计算法 (X264_ME_*)*/
     self->p264Param->rc.i_lookahead = 0;
-    self->p264Param->i_keyint_max = 30;/* 在此间隔设置IDR关键帧(每过多少帧设置一个IDR帧) */
+    self->p264Param->i_keyint_max = 30;/* GOP 在此间隔设置IDR关键帧(每过多少帧设置一个IDR帧) */
     self->p264Param->b_repeat_headers = 1; //关键帧前面是否放sps跟pps帧
     self->p264Param->i_scenecut_threshold = 40;/*如何积极地插入额外的I帧 */
     self->p264Param->rc.i_qp_min = 10;//关键帧最小间隔
     self->p264Param->rc.i_qp_max = 50; //关键帧最大间隔
     self->p264Param->rc.i_qp_constant = 20;
     
-    
+//    self->p264Param－>
     self->p264Param->i_fps_num = 15;/*帧率*/
     self->p264Param->i_fps_den = 1;/*用两个整型的数的比值，来表示帧率*/
     self->p264Param->b_annexb = 1;//如果设置了该项，则在每个NAL单元前加一个四字节的前缀符
     self->p264Param->b_cabac = 0;
     self->p264Param->rc.i_rc_method = X264_RC_ABR;//参数i_rc_method表示码率控制，CQP(恒定质量)，CRF(恒定码率)，ABR(平均码率)
-    int m_bitRate = 76000;
+    int m_bitRate = 96000;
     self->p264Param->rc.i_bitrate = m_bitRate / 1000; // 码率(比特率), x264使用的bitrate需要/1000。
     p264Param->rc.i_vbv_max_bitrate=(int)((m_bitRate * 1.2) / 1000) ; // 平均码率模式下，最大瞬时码率，默认0(与-B设置相同)
     
@@ -87,31 +91,7 @@ static X264Manager* _instance = nil;
 }
 
 
-- (void)initForFilePath
-{
-    char *path = [self GetFilePathByfileName:"IOSCamDemo.h264"];
-    NSLog(@"%s",path);
-    self->fp = fopen(path,"wb");
-}
 
-
-- (char*)GetFilePathByfileName:(char*)filename
-
-{
-    NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask,YES);
-    NSString *documentsDirectory = [paths objectAtIndex:0];
-    NSString *strName = [NSString stringWithFormat:@"%s",filename];
-    
-    NSString *writablePath = [documentsDirectory stringByAppendingPathComponent:strName];
-    
-    NSUInteger len = [writablePath length];
-    
-    char *filepath = (char*)malloc(sizeof(char) * (len + 1));
-    
-    [writablePath getCString:filepath maxLength:len + 1 encoding:[NSString defaultCStringEncoding]];
-    
-    return filepath;
-}
 
 
 - (void)encoderToH264:(CMSampleBufferRef)sampleBuffer
@@ -179,9 +159,8 @@ static X264Manager* _instance = nil;
         {
             for (int i = 0,last = 0; i < i264Nal; i++)
             {
-                //写文件
-                fwrite(self->p264Nal[i].p_payload, 1, i_frame_size - last, self->fp);
-                //fwrite(self->p264Nal[i].p_payload, 1, self->p264Nal[i].i_payload,self->fp);
+
+
                 if (self->p264Nal[i].i_type == NAL_SPS)
                 {
                     sps_len = self->p264Nal[i].i_payload - 4;
